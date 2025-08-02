@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Sales Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>Sales Dashboard</h1>
+    <input type="file" id="fileInput">
+    <div id="dashboard">
+        <div id="salesTrend" style="width:100%;height:400px;"></div>
+        <div id="productLinePie" style="width:100%;height:400px;"></div>
+        <div id="countrySalesBar" style="width:100%;height:400px;"></div>
+        <div id="avgOrderValue" style="width:100%;height:400px;"></div>
+        <div id="dealSizeCount" style="width:100%;height:400px;"></div>
+    </div>
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = JSON.parse(e.target.result);
+                
+                const parseDate = str => new Date(str);
+                const formatDate = date => `${date.getFullYear()}-${date.getMonth() + 1}`;
+                
+                const dateSalesMap = {};
+                const productLineSales = {};
+                const countrySales = {};
+                const orderValues = [];
+                const dealSizeCount = {};
+
+                data.forEach(item => {
+                    const dateKey = formatDate(parseDate(item.ORDER_DATE));
+                    const productLine = item.PRODUCT_LINE;
+                    const country = item.COUNTRY;
+                    const dealSize = item.DEAL_SIZE;
+
+                    const sales = parseFloat(item.SALES.replace(/[^0-9.-]+/g,""));
+                    const price = parseFloat(item.PRICE_EACH.replace(/[^0-9.-]+/g,""));
+                    const qty = item.QUANTITY_ORDERED;
+
+                    dateSalesMap[dateKey] = (dateSalesMap[dateKey] || 0) + sales;
+                    productLineSales[productLine] = (productLineSales[productLine] || 0) + sales;
+                    countrySales[country] = (countrySales[country] || 0) + sales;
+                    dealSizeCount[dealSize] = (dealSizeCount[dealSize] || 0) + 1;
+                    orderValues.push(sales / qty);
+                });
+
+                Plotly.newPlot('salesTrend', [{
+                    x: Object.keys(dateSalesMap),
+                    y: Object.values(dateSalesMap),
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Sales Over Time'
+                }], { title: 'Sales Trend by Month' });
+
+                Plotly.newPlot('productLinePie', [{
+                    labels: Object.keys(productLineSales),
+                    values: Object.values(productLineSales),
+                    type: 'pie'
+                }], { title: 'Sales by Product Line' });
+
+                Plotly.newPlot('countrySalesBar', [{
+                    x: Object.keys(countrySales),
+                    y: Object.values(countrySales),
+                    type: 'bar'
+                }], { title: 'Sales by Country' });
+
+                Plotly.newPlot('avgOrderValue', [{
+                    y: orderValues,
+                    type: 'box',
+                    name: 'Average Order Value'
+                }], { title: 'Distribution of Average Order Value' });
+
+                Plotly.newPlot('dealSizeCount', [{
+                    x: Object.keys(dealSizeCount),
+                    y: Object.values(dealSizeCount),
+                    type: 'bar'
+                }], { title: 'Count of Deals by Size' });
+            };
+            reader.readAsText(file);
+        });
+    </script>
+</body>
+</html>
